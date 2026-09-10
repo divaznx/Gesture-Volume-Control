@@ -32,20 +32,50 @@ while True:
     if result.hand_landmarks:
         for hand in result.hand_landmarks:
             for landmark in hand:
-                x = int(landmark.x*frame.shape[1])
-                y = int(landmark.y*frame.shape[0])
+
+                thumb = hand[4]
+                index = hand[8]
+
+                thumb_x = int(thumb.x*frame.shape[1])
+                index_x = int(index.x*frame.shape[1])
+                thumb_y = int(thumb.y*frame.shape[0])
+                index_y = int(index.y*frame.shape[0])
 
                 cv2.circle(
                     frame,
-                    (x,y),
+                    (thumb_x, thumb_y),
                     5,
                     (0,255,0),
                     -1
 
                 )
 
-    cv2.imshow("Gesture volume control",frame)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+                cv2.circle(
+            frame,
+            (index_x, index_y),
+            10,
+            (0, 255, 0),
+            -1
+        )
+                cv2.line(
+            frame,
+            (thumb_x, thumb_y),
+            (index_x, index_y),
+            (255, 0, 0),
+            3
+        )
+
+    cv2.imshow("Gesture volume control", frame)
+
+    if cv2.getWindowProperty(
+        "Gesture volume control",
+        cv2.WND_PROP_VISIBLE
+    ) < 1:
+        break
+
+    key = cv2.waitKey(1) & 0xFF
+
+    if key == ord("q") or key == 27:
         break
 
 
