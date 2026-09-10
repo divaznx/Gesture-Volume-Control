@@ -4,13 +4,8 @@ import math
 
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
-
 from pycaw.pycaw import AudioUtilities
 
-
-# -----------------------------
-# MediaPipe setup
-# -----------------------------
 
 base_options = python.BaseOptions(
     model_asset_path="models/hand_landmarker.task"
@@ -26,37 +21,27 @@ options = vision.HandLandmarkerOptions(
 
 detector = vision.HandLandmarker.create_from_options(options)
 
-
-# -----------------------------
-# Windows volume setup
-# -----------------------------
-
 devices = AudioUtilities.GetSpeakers()
 volume = devices.EndpointVolume
 
 volume_range = volume.GetVolumeRange()
-
 min_volume = volume_range[0]
 max_volume = volume_range[1]
 
+min_distance = 30
+max_distance = 200
 
-# -----------------------------
-# Webcam
-# -----------------------------
+smooth_volume = 0
 
 cap = cv2.VideoCapture(0)
 
 while True:
-
     success, frame = cap.read()
 
     if not success:
         break
 
-    rgb_frame = cv2.cvtColor(
-        frame,
-        cv2.COLOR_BGR2RGB
-    )
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
     mp_image = mp.Image(
         image_format=mp.ImageFormat.SRGB,
@@ -65,52 +50,21 @@ while True:
 
     result = detector.detect(mp_image)
 
-
-    # -----------------------------
-    # Hand detected
-    # -----------------------------
-
     if result.hand_landmarks:
-
         for hand in result.hand_landmarks:
-
-            # Landmark 4 = thumb tip
-            # Landmark 8 = index finger tip
-
             thumb = hand[4]
             index = hand[8]
 
-            thumb_x = int(
-                thumb.x * frame.shape[1]
-            )
-            thumb_y = int(
-                thumb.y * frame.shape[0]
-            )
+            thumb_x = int(thumb.x * frame.shape[1])
+            thumb_y = int(thumb.y * frame.shape[0])
 
-            index_x = int(
-                index.x * frame.shape[1]
-            )
-            index_y = int(
-                index.y * frame.shape[0]
-            )
-
-
-            # -----------------------------
-            # Calculate distance
-            # -----------------------------
+            index_x = int(index.x * frame.shape[1])
+            index_y = int(index.y * frame.shape[0])
 
             distance = math.hypot(
                 index_x - thumb_x,
                 index_y - thumb_y
             )
-
-
-            # -----------------------------
-            # Map distance → volume %
-            # -----------------------------
-
-            min_distance = 30
-            max_distance = 200
 
             distance = max(
                 min_distance,
@@ -122,14 +76,14 @@ while True:
                 / (max_distance - min_distance)
             ) * 100
 
-
-            # -----------------------------
-            # Map volume % → Windows dB
-            # -----------------------------
+            smooth_volume = (
+                smooth_volume * 0.8
+                + volume_percent * 0.2
+            )
 
             volume_db = (
                 min_volume
-                + (volume_percent / 100)
+                + (smooth_volume / 100)
                 * (max_volume - min_volume)
             )
 
@@ -138,11 +92,6 @@ while True:
                 None
             )
 
-
-            # -----------------------------
-            # Draw thumb
-            # -----------------------------
-
             cv2.circle(
                 frame,
                 (thumb_x, thumb_y),
@@ -151,11 +100,6 @@ while True:
                 -1
             )
 
-
-            # -----------------------------
-            # Draw index finger
-            # -----------------------------
-
             cv2.circle(
                 frame,
                 (index_x, index_y),
@@ -163,11 +107,6 @@ while True:
                 (0, 255, 0),
                 -1
             )
-
-
-            # -----------------------------
-            # Draw line
-            # -----------------------------
 
             cv2.line(
                 frame,
@@ -176,11 +115,6 @@ while True:
                 (255, 0, 0),
                 3
             )
-
-
-            # -----------------------------
-            # Display distance
-            # -----------------------------
 
             cv2.putText(
                 frame,
@@ -192,14 +126,9 @@ while True:
                 2
             )
 
-
-            # -----------------------------
-            # Display volume
-            # -----------------------------
-
             cv2.putText(
                 frame,
-                f"Volume: {int(volume_percent)}%",
+                f"Volume: {int(smooth_volume)}%",
                 (20, 80),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 1,
@@ -207,20 +136,44 @@ while True:
                 2
             )
 
+            bar_x = 30
+            bar_y = 120
+            bar_width = 30
+            bar_height = 200
 
-    # -----------------------------
-    # Show frame
-    # -----------------------------
+            cv2.rectangle(
+                frame,
+                (bar_x, bar_y),
+                (bar_x + bar_width, bar_y + bar_height),
+                (255, 255, 255),
+                2
+            )
+
+            filled_height = int(
+                bar_height * smooth_volume / 100
+            )
+
+            cv2.rectangle(
+                frame,
+                (
+                    bar_x,
+                    bar_y + bar_height - filled_height
+                ),
+                (
+                    bar_x + bar_width,
+                    bar_y + bar_height
+                ),
+                (0, 255, 0),
+                -1
+            )
 
     cv2.imshow(
-        "Gesture volume control",
+        "Gesture Volume Control",
         frame
     )
 
-
-    # Close window
     if cv2.getWindowProperty(
-        "Gesture volume control",
+        "Gesture Volume Control",
         cv2.WND_PROP_VISIBLE
     ) < 1:
         break
@@ -230,8 +183,6 @@ while True:
     if key == ord("q") or key == 27:
         break
 
-
 cap.release()
 cv2.destroyAllWindows()
-
 detector.close()
