@@ -1,5 +1,6 @@
 import cv2 
 import mediapipe as mp
+import math
 
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
@@ -41,28 +42,40 @@ while True:
                 thumb_y = int(thumb.y*frame.shape[0])
                 index_y = int(index.y*frame.shape[0])
 
-                cv2.circle(
-                    frame,
-                    (thumb_x, thumb_y),
-                    5,
-                    (0,255,0),
-                    -1
-
+                distance = math.hypot(
+                    index_x - thumb_x,
+                    index_y - thumb_y
                 )
 
-                cv2.circle(
-            frame,
-            (index_x, index_y),
-            10,
-            (0, 255, 0),
-            -1
-        )
-                cv2.line(
+
+                # Draw thumb and index points
+        cv2.circle(frame, (thumb_x, thumb_y), 10, (0, 255, 0), -1)
+        cv2.circle(frame, (index_x, index_y), 10, (0, 255, 0), -1)
+
+        # Draw line between them
+        cv2.line(
             frame,
             (thumb_x, thumb_y),
             (index_x, index_y),
             (255, 0, 0),
             3
+        )
+        cv2.line(
+            frame,
+            (thumb_x, thumb_y),
+            (index_x, index_y),
+            (255, 0, 0),
+            3
+        )
+
+        cv2.putText(
+            frame,
+            f"Distance: {int(distance)}",
+            (20, 40),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            (255, 255, 255),
+            2
         )
 
     cv2.imshow("Gesture volume control", frame)
